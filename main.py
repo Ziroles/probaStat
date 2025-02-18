@@ -1,6 +1,6 @@
-import sklearn as sk
-import numpy as np
-import utils.DataManager as dm
+import matplotlib.pyplot as plt
+import pandas as pd
+from utils.DataManager import DataManager
 
-
-dm = dm()
+if __name__ == "__main__":
+    dataManager = DataManager()
