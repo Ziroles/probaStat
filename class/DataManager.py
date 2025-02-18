@@ -16,7 +16,7 @@ class DataManager:
                          "ProductCategoryNameTranslation": "product_category_name_translation.csv"}
         self.load_data()
 
-    def data(self, key):
+    def getData(self, key):
         return self.data[key]
 
     def load_data(self):
