@@ -1,9 +1,8 @@
 import pandas as pd
 
 class DataManager:
-
     def __init__(self):
-        self.data = {}
+        self.dataFrames = {}
         self.fileName = {"Customers": "olist_customers_dataset.csv",
                          "Geolocation": "olist_geolocation_dataset.csv",
                          "OrderItems": "olist_order_items_dataset.csv",
@@ -15,9 +14,9 @@ class DataManager:
                          "ProductCategoryNameTranslation": "product_category_name_translation.csv"}
         self.load_data()
 
-    def getData(self, key):
-        return self.data[key]
+    def get_data(self, key):
+        return self.dataFrames[key]
 
     def load_data(self):
-        for i in self.fileName:
-            self.data[i] = pd.read_csv(self.fileName[i])
+        for csvFileKey in self.fileName:
+            self.dataFrames[csvFileKey] = pd.read_csv(self.fileName[csvFileKey])
