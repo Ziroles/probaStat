@@ -3,3 +3,5 @@ olist_order_items_dataset.csv => prix livraison
 olist_order_payments_dataset.csv => payment_sequential nb de paiement par commande 
 olist_order_reviews_dataset.csv => Review
 olist_sellers_dataset.csv => vendeur
+
+Pour population, voir : https://datacommons.org/place/country/BRA?category=Demographics
