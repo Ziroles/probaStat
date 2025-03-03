@@ -12,7 +12,8 @@ class DataManager:
                            "Orders": "./data/olist_orders_dataset.csv",
                            "Products": "./data/olist_products_dataset.csv",
                            "Sellers": "./data/olist_sellers_dataset.csv",
-                           "ProductCategoryNameTranslation": "./data/product_category_name_translation.csv"}
+                           "ProductCategoryNameTranslation": "./data/product_category_name_translation.csv",
+                           "StatesPopulation": "./data/brazil_states_population.csv", }
         self.load_data()
 
     def get_dataframe(self, key: str) -> pd.DataFrame:
@@ -20,6 +21,6 @@ class DataManager:
 
     def load_data(self):
         for csvFileKey in self.__fileName:
-            self.dataFrames[csvFileKey] = pd.read_csv(self.__fileName[csvFileKey],
-                                                      delimiter=',',
-                                                      header=0)
+            self.dataFrames[csvFileKey]: pd.DataFrame = pd.read_csv(self.__fileName[csvFileKey],
+                                                                    delimiter=',',
+                                                                    header=0)
