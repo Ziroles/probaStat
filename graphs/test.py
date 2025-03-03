@@ -1,67 +1,99 @@
 import pandas as pd
-import folium
-from folium.plugins import HeatMap
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.stats as stats
 
 
-def test(dataManager):
-    # Charger les fichiers de données
-    customers_df = dataManager.get_dataframe("Customers")
-    orders_df = dataManager.get_dataframe("Orders")
+def analyze_statistics(dfm):
 
-    # Coordonnées moyennes des États brésiliens
-    state_coords = {
-        "AC": [-9.02, -70.81],
-        "AL": [-9.57, -36.53],
-        "AP": [1.41, -51.77],
-        "AM": [-3.47, -65.10],
-        "BA": [-12.97, -41.48],
-        "CE": [-5.20, -39.53],
-        "DF": [-15.78, -47.93],
-        "ES": [-19.19, -40.34],
-        "GO": [-15.93, -50.14],
-        "MA": [-5.42, -45.44],
-        "MT": [-12.64, -55.42],
-        "MS": [-20.51, -54.54],
-        "MG": [-18.10, -44.38],
-        "PA": [-3.79, -52.48],
-        "PB": [-7.28, -36.72],
-        "PR": [-24.89, -51.55],
-        "PE": [-8.38, -37.86],
-        "PI": [-6.60, -42.28],
-        "RJ": [-22.91, -43.19],
-        "RN": [-5.81, -36.59],
-        "RS": [-30.03, -51.22],
-        "RO": [-10.83, -63.34],
-        "RR": [2.82, -61.32],
-        "SC": [-27.45, -50.95],
-        "SP": [-23.55, -46.63],
-        "SE": [-10.57, -37.45],
-        "TO": [-10.25, -48.25],
+    order_items_df = dfm.get_dataframe("OrderItems")
+    order_reviews_df = dfm.get_dataframe("OrderReviews")
+    orders_df = dfm.get_dataframe("Orders")
+
+    orders_df["order_purchase_timestamp"] = pd.to_datetime(
+        orders_df["order_purchase_timestamp"]
+    )
+    orders_df["order_delivered_customer_date"] = pd.to_datetime(
+        orders_df["order_delivered_customer_date"]
+    )
+
+    orders_df["delivery_time"] = (
+        orders_df["order_delivered_customer_date"]
+        - orders_df["order_purchase_timestamp"]
+    ).dt.days
+
+    reviews_df = (
+        order_reviews_df.groupby("order_id")["review_score"].mean().reset_index()
+    )
+    data = order_items_df.merge(orders_df, on="order_id").merge(
+        reviews_df, on="order_id", how="left"
+    )
+
+    variables = ["price", "freight_value", "delivery_time", "review_score"]
+
+    def remove_outliers(df, column):
+        Q1 = df[column].quantile(0.01)
+        Q3 = df[column].quantile(0.99)
+        return df[(df[column] >= Q1) & (df[column] <= Q3)]
+
+    data_filtered = data.copy()
+    for col in variables:
+        data_filtered = remove_outliers(data_filtered, col)
+
+    stats_desc = data_filtered[variables].describe()
+    print(stats_desc)
+
+    colors = {
+        "price": "lightblue",
+        "freight_value": "lightgreen",
+        "delivery_time": "lightcoral",
+        "review_score": "gold",
     }
 
-    # Nombre de ventes par état
-    sales_by_state = customers_df.merge(orders_df, on="customer_id")
-    sales_by_state = (
-        sales_by_state.groupby("customer_state").size().reset_index(name="num_sales")
-    )
+    for col in variables:
+        plt.figure(figsize=(6, 4))
+        plt.hist(
+            data_filtered[col].dropna(),
+            bins=30,
+            edgecolor="black",
+            alpha=0.7,
+            color=colors[col],
+        )
+        plt.title(f"Histogramme de {col}", fontsize=12)
+        plt.xlabel(col, fontsize=10)
+        plt.ylabel("Fréquence", fontsize=10)
+        plt.grid(True, linestyle="--", alpha=0.7)
+        plt.savefig(f"img/{col}_histogram.png")
+        plt.close()
 
-    # Ajouter les coordonnées des états
-    sales_by_state["lat"] = sales_by_state["customer_state"].map(
-        lambda x: state_coords.get(x, [None, None])[0]
-    )
-    sales_by_state["lon"] = sales_by_state["customer_state"].map(
-        lambda x: state_coords.get(x, [None, None])[1]
-    )
+        plt.figure(figsize=(6, 4))
+        plt.boxplot(
+            data_filtered[col].dropna(),
+            vert=True,
+            patch_artist=True,
+            boxprops=dict(facecolor=colors[col]),
+        )
+        plt.title(f"Boxplot de {col}", fontsize=12)
+        plt.ylabel(col, fontsize=10)
+        plt.grid(True, linestyle="--", alpha=0.7)
+        plt.savefig(f"img/{col}_boxplot.png")
+        plt.close()
 
-    # Créer la carte centrée sur le Brésil
-    brasil_map = folium.Map(location=[-14.23, -51.92], zoom_start=4)
+    def confidence_interval(data, confidence=0.95):
+        n = len(data)
+        mean = np.mean(data)
+        std_err = stats.sem(data)
+        margin = std_err * stats.t.ppf((1 + confidence) / 2.0, n - 1)
+        return mean - margin, mean + margin
 
-    # Ajouter les ventes sous forme de heatmap
-    heat_data = sales_by_state.dropna()[["lat", "lon", "num_sales"]].values.tolist()
-    HeatMap(heat_data, radius=25, blur=15).add_to(brasil_map)
+    confidence_levels = [0.90, 0.95]
+    confidence_results = {}
 
-    # Sauvegarder la carte en HTML
-    brasil_map.save("heatmap_ventes_bresil.html")
+    for col in variables:
+        if col != "review_score":
+            for conf in confidence_levels:
+                ci = confidence_interval(data_filtered[col].dropna(), confidence=conf)
+                confidence_results[f"{col}_{int(conf*100)}%"] = ci
+                print(f"Intervalle de confiance à {int(conf*100)}% pour {col}: {ci}")
 
-    # Affichage de la carte (uniquement en environnement Jupyter)
-    brasil_map
+    return confidence_results
